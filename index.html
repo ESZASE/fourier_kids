@@ -2,108 +2,155 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>¡Magia con Fourier!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>✨ ¡Magia con Fourier! ✨</title>
     <style>
         * {
             box-sizing: border-box;
-            touch-action: none; /* Evita el scroll mientras dibujan */
+            -webkit-tap-highlight-color: transparent;
         }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        html, body {
             margin: 0;
-            padding: 10px;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             background-color: #f4f6f9;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
+            padding: 10px;
         }
+
         h1 {
-            margin: 5px 0;
+            margin: 5px 0 10px 0;
             color: #2c3e50;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             text-align: center;
         }
+
+        /* BARRA DE CONTROLES */
         .controls {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
             justify-content: center;
             align-items: center;
             background: #ffffff;
-            padding: 10px 15px;
+            padding: 10px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             margin-bottom: 10px;
             width: 100%;
-            max-width: 900px;
+            max-width: 1100px;
         }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
         label {
-            font-weight: bold;
+            font-weight: 600;
             color: #34495e;
+            font-size: 0.9rem;
         }
+
         input[type="number"] {
             width: 60px;
             padding: 6px;
-            border: 1px solid #ccc;
+            border: 1px solid #cbd5e1;
             border-radius: 6px;
             font-size: 1rem;
             text-align: center;
         }
+
         button {
-            padding: 8px 16px;
+            padding: 8px 14px;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: bold;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: transform 0.1s, opacity 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
+
+        button:active {
+            transform: scale(0.96);
+        }
+
         .btn-animate { background-color: #2ecc71; color: white; }
         .btn-stop { background-color: #e74c3c; color: white; }
         .btn-clear { background-color: #95a5a6; color: white; }
-        button:hover { opacity: 0.9; }
 
+        /* CONTENEDOR DE PANELES (RESPONSIVO) */
         .panels-container {
             display: flex;
-            flex-direction: row;
-            gap: 10px;
+            flex-direction: column; /* Apilado por defecto en celulares */
+            gap: 12px;
             width: 100%;
-            max-width: 1000px;
+            max-width: 1100px;
             flex-grow: 1;
         }
+
+        /* Vista en Computadora / Tabletas Horizontales */
+        @media (min-width: 768px) {
+            .panels-container {
+                flex-direction: row; /* Lado a lado 50% / 50% */
+            }
+        }
+
         .panel {
             flex: 1;
             background: white;
             border-radius: 12px;
             padding: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-width: 0;
         }
+
         .panel h2 {
-            font-size: 1rem;
-            margin: 0 0 10px 0;
-            color: #7f8c8d;
+            font-size: 0.95rem;
+            margin: 0 0 8px 0;
+            color: #475569;
+            text-align: center;
         }
+
+        /* ÁREA DE DIBUJO Y ANIMACIÓN */
+        .canvas-wrapper {
+            width: 100%;
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
         canvas {
-            border: 2px dashed #bdc3c7;
+            border: 2px dashed #cbd5e1;
             border-radius: 8px;
             background-color: #fafafa;
             width: 100%;
-            height: 350px;
-            touch-action: none;
+            height: 320px; /* Altura ideal móvil */
+            display: block;
+            touch-action: none; /* Bloquea el scroll del sistema en el lienzo */
         }
-        
-        /* Adaptación a celulares pequeños */
-        @media (max-width: 600px) {
-            .panels-container {
-                flex-direction: column;
-            }
+
+        @media (min-width: 768px) {
             canvas {
-                height: 280px;
+                height: 450px; /* Altura mayor en PC */
             }
         }
     </style>
@@ -113,9 +160,10 @@
     <h1>✨ ¡Magia con Círculos de Fourier! ✨</h1>
 
     <div class="controls">
-        <label for="harmonics">Círculos (Armónicos):</label>
-        <input type="number" id="harmonics" value="20" min="1" max="150">
-        
+        <div class="control-group">
+            <label for="harmonics">Círculos:</label>
+            <input type="number" id="harmonics" value="20" min="1" max="150">
+        </div>
         <button class="btn-animate" onclick="startAnimation()">▶ Animar</button>
         <button class="btn-stop" onclick="stopAnimation()">⏹ Detener</button>
         <button class="btn-clear" onclick="clearCanvas()">🗑 Limpiar</button>
@@ -124,11 +172,15 @@
     <div class="panels-container">
         <div class="panel">
             <h2>1. Dibuja aquí con tu dedo o ratón</h2>
-            <canvas id="drawCanvas"></canvas>
+            <div class="canvas-wrapper">
+                <canvas id="drawCanvas"></canvas>
+            </div>
         </div>
         <div class="panel">
             <h2>2. Mira la magia de los círculos</h2>
-            <canvas id="fourierCanvas"></canvas>
+            <div class="canvas-wrapper">
+                <canvas id="fourierCanvas"></canvas>
+            </div>
         </div>
     </div>
 
@@ -146,25 +198,44 @@
         let timeStep = 0;
         let numSamples = 300;
 
-        // Ajustar resolución del canvas
+        // Ajustar resolución en píxeles reales del Canvas para evitar borrosidad y desalineación
         function resizeCanvas() {
             [drawCanvas, fourierCanvas].forEach(canvas => {
                 const rect = canvas.getBoundingClientRect();
-                canvas.width = rect.width;
-                canvas.height = rect.height;
+                if (canvas.width !== rect.width || canvas.height !== rect.height) {
+                    canvas.width = rect.width;
+                    canvas.height = rect.height;
+                }
             });
-            clearCanvas();
+            redrawOriginalPoints();
         }
-        window.addEventListener('resize', resizeCanvas);
-        setTimeout(resizeCanvas, 100);
 
-        // --- Eventos de Dibujo (Táctil y Ratón) ---
+        const resizeObserver = new ResizeObserver(() => resizeCanvas());
+        resizeObserver.observe(drawCanvas.parentElement);
+
+        function redrawOriginalPoints() {
+            if (points.length < 2) return;
+            ctxDraw.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            ctxDraw.beginPath();
+            ctxDraw.lineWidth = 4;
+            ctxDraw.lineCap = 'round';
+            ctxDraw.lineJoin = 'round';
+            ctxDraw.strokeStyle = '#8e44ad';
+            ctxDraw.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                ctxDraw.lineTo(points[i].x, points[i].y);
+            }
+            ctxDraw.stroke();
+        }
+
+        // --- Eventos Táctiles y de Ratón Mejorados ---
         function getPos(e) {
             const rect = drawCanvas.getBoundingClientRect();
-            const touch = e.touches ? e.touches[0] : e;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return {
-                x: touch.clientX - rect.left,
-                y: touch.clientY - rect.top
+                x: clientX - rect.left,
+                y: clientY - rect.top
             };
         }
 
@@ -184,6 +255,7 @@
             points.push(pos);
             ctxDraw.lineWidth = 4;
             ctxDraw.lineCap = 'round';
+            ctxDraw.lineJoin = 'round';
             ctxDraw.strokeStyle = '#8e44ad';
             ctxDraw.lineTo(pos.x, pos.y);
             ctxDraw.stroke();
@@ -193,39 +265,47 @@
             isDrawing = false;
         }
 
+        // Eventos Ratón
         drawCanvas.addEventListener('mousedown', startDraw);
         drawCanvas.addEventListener('mousemove', draw);
         window.addEventListener('mouseup', stopDraw);
 
-        drawCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); });
-        drawCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
-        drawCanvas.addEventListener('touchend', stopDraw);
+        // Eventos Táctiles (Con prevención estricta de Scroll)
+        drawCanvas.addEventListener('touchstart', (e) => {
+            if (e.target === drawCanvas) e.preventDefault();
+            startDraw(e);
+        }, { passive: false });
 
-        // --- Cálculo de Fourier (Transformada Discreta) ---
+        drawCanvas.addEventListener('touchmove', (e) => {
+            if (e.target === drawCanvas) e.preventDefault();
+            draw(e);
+        }, { passive: false });
+
+        drawCanvas.addEventListener('touchend', (e) => {
+            stopDraw();
+        });
+
+        // --- Cálculo de Fourier (DFT) ---
         function computeFourier() {
             if (points.length < 10) return false;
 
-            // Remuestreo uniforme
             let x = points.map(p => p.x);
             let y = points.map(p => p.y);
 
             let meanX = x.reduce((a, b) => a + b) / x.length;
             let meanY = y.reduce((a, b) => a + b) / y.length;
 
-            // Centrar
             let z = [];
             for (let i = 0; i < points.length; i++) {
                 z.push({ re: points[i].x - meanX, im: points[i].y - meanY });
             }
 
-            // Muestrear a N puntos fijos
             let samples = [];
             for (let i = 0; i < numSamples; i++) {
                 let idx = Math.floor((i / numSamples) * z.length);
                 samples.push(z[idx]);
             }
 
-            // DFT Compleja
             let X = [];
             const N = samples.length;
 
@@ -247,18 +327,17 @@
                 X.push({ re, im, freq, amp, phase });
             }
 
-            // Ordenar por amplitud (de mayor a menor)
             X.sort((a, b) => b.amp - a.amp);
 
-            let harmonics = parseInt(document.getElementById('harmonics').value);
+            let harmonics = parseInt(document.getElementById('harmonics').value) || 20;
             fourierCoeffs = X.slice(0, Math.min(harmonics, N));
             return true;
         }
 
-        // --- Animación ---
+        // --- Animación de los Círculos ---
         function startAnimation() {
             if (!computeFourier()) {
-                alert("Dibuja algo antes de animar.");
+                alert("Dibuja una figura con el dedo antes de animar.");
                 return;
             }
             stopAnimation();
@@ -276,7 +355,6 @@
             const dt = (2 * Math.PI) / numSamples;
             const time = timeStep * dt;
 
-            // Dibujar epiciclos
             for (let i = 0; i < fourierCoeffs.length; i++) {
                 let prevX = x;
                 let prevY = y;
@@ -288,27 +366,26 @@
                 x += radius * Math.cos(freq * time + phase);
                 y += radius * Math.sin(freq * time + phase);
 
-                // Círculo
+                // Dibujar círculo
                 ctxFourier.beginPath();
                 ctxFourier.arc(prevX, prevY, radius, 0, 2 * Math.PI);
-                ctxFourier.strokeStyle = 'rgba(52, 152, 219, 0.3)';
+                ctxFourier.strokeStyle = 'rgba(52, 152, 219, 0.35)';
                 ctxFourier.lineWidth = 1;
                 ctxFourier.stroke();
 
-                // Línea / Vector
+                // Dibujar línea / radio
                 ctxFourier.beginPath();
                 ctxFourier.moveTo(prevX, prevY);
                 ctxFourier.lineTo(x, y);
-                ctxFourier.strokeStyle = 'rgba(231, 76, 60, 0.6)';
+                ctxFourier.strokeStyle = 'rgba(231, 76, 60, 0.7)';
                 ctxFourier.lineWidth = 1.5;
                 ctxFourier.stroke();
             }
 
-            // Guardar trazo
             reconstructedPath.unshift({ x, y });
             if (reconstructedPath.length > numSamples) reconstructedPath.pop();
 
-            // Dibujar trazo reconstruido
+            // Dibujar trazo verde reconstruido
             ctxFourier.beginPath();
             ctxFourier.strokeStyle = '#2ecc71';
             ctxFourier.lineWidth = 3;
