@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>¡Magia con Fourier!</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            touch-action: none; /* Evita el scroll mientras dibujan */
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #f4f6f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h1 {
+            margin: 5px 0;
+            color: #2c3e50;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            background: #ffffff;
+            padding: 10px 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 10px;
+            width: 100%;
+            max-width: 900px;
+        }
+        label {
+            font-weight: bold;
+            color: #34495e;
+        }
+        input[type="number"] {
+            width: 60px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            text-align: center;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-animate { background-color: #2ecc71; color: white; }
+        .btn-stop { background-color: #e74c3c; color: white; }
+        .btn-clear { background-color: #95a5a6; color: white; }
+        button:hover { opacity: 0.9; }
+
+        .panels-container {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            width: 100%;
+            max-width: 1000px;
+            flex-grow: 1;
+        }
+        .panel {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .panel h2 {
+            font-size: 1rem;
+            margin: 0 0 10px 0;
+            color: #7f8c8d;
+        }
+        canvas {
+            border: 2px dashed #bdc3c7;
+            border-radius: 8px;
+            background-color: #fafafa;
+            width: 100%;
+            height: 350px;
+            touch-action: none;
+        }
+        
+        /* Adaptación a celulares pequeños */
+        @media (max-width: 600px) {
+            .panels-container {
+                flex-direction: column;
+            }
+            canvas {
+                height: 280px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>✨ ¡Magia con Círculos de Fourier! ✨</h1>
+
+    <div class="controls">
+        <label for="harmonics">Círculos (Armónicos):</label>
+        <input type="number" id="harmonics" value="20" min="1" max="150">
+        
+        <button class="btn-animate" onclick="startAnimation()">▶ Animar</button>
+        <button class="btn-stop" onclick="stopAnimation()">⏹ Detener</button>
+        <button class="btn-clear" onclick="clearCanvas()">🗑 Limpiar</button>
+    </div>
+
+    <div class="panels-container">
+        <div class="panel">
+            <h2>1. Dibuja aquí con tu dedo o ratón</h2>
+            <canvas id="drawCanvas"></canvas>
+        </div>
+        <div class="panel">
+            <h2>2. Mira la magia de los círculos</h2>
+            <canvas id="fourierCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const drawCanvas = document.getElementById('drawCanvas');
+        const fourierCanvas = document.getElementById('fourierCanvas');
+        const ctxDraw = drawCanvas.getContext('2d');
+        const ctxFourier = fourierCanvas.getContext('2d');
+
+        let isDrawing = false;
+        let points = [];
+        let animationFrameId = null;
+        let fourierCoeffs = [];
+        let reconstructedPath = [];
+        let timeStep = 0;
+        let numSamples = 300;
+
+        // Ajustar resolución del canvas
+        function resizeCanvas() {
+            [drawCanvas, fourierCanvas].forEach(canvas => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+            });
+            clearCanvas();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        setTimeout(resizeCanvas, 100);
+
+        // --- Eventos de Dibujo (Táctil y Ratón) ---
+        function getPos(e) {
+            const rect = drawCanvas.getBoundingClientRect();
+            const touch = e.touches ? e.touches[0] : e;
+            return {
+                x: touch.clientX - rect.left,
+                y: touch.clientY - rect.top
+            };
+        }
+
+        function startDraw(e) {
+            stopAnimation();
+            clearCanvas();
+            isDrawing = true;
+            const pos = getPos(e);
+            points.push(pos);
+            ctxDraw.beginPath();
+            ctxDraw.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = getPos(e);
+            points.push(pos);
+            ctxDraw.lineWidth = 4;
+            ctxDraw.lineCap = 'round';
+            ctxDraw.strokeStyle = '#8e44ad';
+            ctxDraw.lineTo(pos.x, pos.y);
+            ctxDraw.stroke();
+        }
+
+        function stopDraw() {
+            isDrawing = false;
+        }
+
+        drawCanvas.addEventListener('mousedown', startDraw);
+        drawCanvas.addEventListener('mousemove', draw);
+        window.addEventListener('mouseup', stopDraw);
+
+        drawCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); });
+        drawCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+        drawCanvas.addEventListener('touchend', stopDraw);
+
+        // --- Cálculo de Fourier (Transformada Discreta) ---
+        function computeFourier() {
+            if (points.length < 10) return false;
+
+            // Remuestreo uniforme
+            let x = points.map(p => p.x);
+            let y = points.map(p => p.y);
+
+            let meanX = x.reduce((a, b) => a + b) / x.length;
+            let meanY = y.reduce((a, b) => a + b) / y.length;
+
+            // Centrar
+            let z = [];
+            for (let i = 0; i < points.length; i++) {
+                z.push({ re: points[i].x - meanX, im: points[i].y - meanY });
+            }
+
+            // Muestrear a N puntos fijos
+            let samples = [];
+            for (let i = 0; i < numSamples; i++) {
+                let idx = Math.floor((i / numSamples) * z.length);
+                samples.push(z[idx]);
+            }
+
+            // DFT Compleja
+            let X = [];
+            const N = samples.length;
+
+            for (let k = 0; k < N; k++) {
+                let re = 0;
+                let im = 0;
+                for (let n = 0; n < N; n++) {
+                    let phi = (2 * Math.PI * k * n) / N;
+                    re += samples[n].re * Math.cos(phi) + samples[n].im * Math.sin(phi);
+                    im += -samples[n].re * Math.sin(phi) + samples[n].im * Math.cos(phi);
+                }
+                re /= N;
+                im /= N;
+
+                let freq = k;
+                let amp = Math.sqrt(re * re + im * im);
+                let phase = Math.atan2(im, re);
+
+                X.push({ re, im, freq, amp, phase });
+            }
+
+            // Ordenar por amplitud (de mayor a menor)
+            X.sort((a, b) => b.amp - a.amp);
+
+            let harmonics = parseInt(document.getElementById('harmonics').value);
+            fourierCoeffs = X.slice(0, Math.min(harmonics, N));
+            return true;
+        }
+
+        // --- Animación ---
+        function startAnimation() {
+            if (!computeFourier()) {
+                alert("Dibuja algo antes de animar.");
+                return;
+            }
+            stopAnimation();
+            reconstructedPath = [];
+            timeStep = 0;
+            animate();
+        }
+
+        function animate() {
+            ctxFourier.clearRect(0, 0, fourierCanvas.width, fourierCanvas.height);
+
+            let x = fourierCanvas.width / 2;
+            let y = fourierCanvas.height / 2;
+
+            const dt = (2 * Math.PI) / numSamples;
+            const time = timeStep * dt;
+
+            // Dibujar epiciclos
+            for (let i = 0; i < fourierCoeffs.length; i++) {
+                let prevX = x;
+                let prevY = y;
+
+                let radius = fourierCoeffs[i].amp;
+                let freq = fourierCoeffs[i].freq;
+                let phase = fourierCoeffs[i].phase;
+
+                x += radius * Math.cos(freq * time + phase);
+                y += radius * Math.sin(freq * time + phase);
+
+                // Círculo
+                ctxFourier.beginPath();
+                ctxFourier.arc(prevX, prevY, radius, 0, 2 * Math.PI);
+                ctxFourier.strokeStyle = 'rgba(52, 152, 219, 0.3)';
+                ctxFourier.lineWidth = 1;
+                ctxFourier.stroke();
+
+                // Línea / Vector
+                ctxFourier.beginPath();
+                ctxFourier.moveTo(prevX, prevY);
+                ctxFourier.lineTo(x, y);
+                ctxFourier.strokeStyle = 'rgba(231, 76, 60, 0.6)';
+                ctxFourier.lineWidth = 1.5;
+                ctxFourier.stroke();
+            }
+
+            // Guardar trazo
+            reconstructedPath.unshift({ x, y });
+            if (reconstructedPath.length > numSamples) reconstructedPath.pop();
+
+            // Dibujar trazo reconstruido
+            ctxFourier.beginPath();
+            ctxFourier.strokeStyle = '#2ecc71';
+            ctxFourier.lineWidth = 3;
+            for (let i = 0; i < reconstructedPath.length - 1; i++) {
+                ctxFourier.moveTo(reconstructedPath[i].x, reconstructedPath[i].y);
+                ctxFourier.lineTo(reconstructedPath[i + 1].x, reconstructedPath[i + 1].y);
+            }
+            ctxFourier.stroke();
+
+            timeStep++;
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function stopAnimation() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+        }
+
+        function clearCanvas() {
+            stopAnimation();
+            points = [];
+            reconstructedPath = [];
+            ctxDraw.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            ctxFourier.clearRect(0, 0, fourierCanvas.width, fourierCanvas.height);
+        }
+    </script>
+</body>
+</html>
